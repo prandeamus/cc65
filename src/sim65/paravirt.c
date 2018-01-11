@@ -7,7 +7,7 @@
 /*                                                                           */
 /*                                                                           */
 /* (C) 2013-2013 Ullrich von Bassewitz                                       */
-/*               Römerstrasse 52                                             */
+/*               Rï¿½merstrasse 52                                             */
 /*               D-70794 Filderstadt                                         */
 /* EMail:        uz@cc65.org                                                 */
 /*                                                                           */
@@ -281,15 +281,27 @@ static void PVWrite (CPURegs* Regs)
     SetAX (Regs, RetVal);
 }
 
+static void PVGetCycles (CPURegs* Regs) {
+    unsigned Buf = GetAX (Regs); /* Pointer to buffer for cycle count */
+    unsigned long CyclesCount = GetCycles ();
+    
+    MemWriteWord (Buf,   (CyclesCount      ) & 0xFFFF);
+    MemWriteWord (Buf+2, (CyclesCount >> 16) & 0xFFFF);
+    MemWriteWord (Buf+4, (CyclesCount >> 32) & 0xFFFF);
+    MemWriteWord (Buf+6, (CyclesCount >> 48) & 0xFFFF);
 
+    Print (stderr, 2, "PVGetCycles Count ($%04lX)\n", CyclesCount);
+}
 
 static const PVFunc Hooks[] = {
+    /* Must be kept in sync with sequential entry points at /libsrc/sim6502/paravirt.s */
     PVArgs,
     PVExit,
     PVOpen,
     PVClose,
     PVRead,
     PVWrite,
+    PVGetCycles
 };
 
 
