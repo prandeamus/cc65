@@ -2,61 +2,61 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-/* Profile definitions */
-/* There is no long long or 8-byte type in cc65, so use a buffer */
-#define CYCLE_BUFFER_SIZE 8
-typedef union {
-    uint8_t by [sizeof(uint32_t)*2];
-    struct longs {
-        uint32_t lo;
-        uint32_t hi;
-    };
-} CycleBuffer;
+/* Profile definitions - this needs to move to a header file */
+/* There is no long long or 8-byte type in cc65, so use a structure */
+typedef struct {
+    uint32_t lo;
+    uint32_t hi;
+} Long64;
 
 /* Paravirtualisation entry point to get get current cycle count */
-extern void __fastcall__ getcycles(CycleBuffer * buf);
+extern void __fastcall__ getcycles(Long64 * buf);
 /* End profile definitions */
+
 
 /* Support functions inside the simulated processor */
 
-static unsigned long __fastcall__ CycleBufferDiff (CycleBuffer *BufExit, CycleBuffer *BufEntry)
-/* Calculate difference between two cycle buffers. Ignores overflow */
+static unsigned long __fastcall__ Long64Diff (Long64 *Exit, Long64 *Entry)
+/* Calculate difference between two Long64 values */
 {
     unsigned long Diff;
-    if(BufExit->hi == BufEntry->hi)
+    if(Exit->hi == Entry->hi)
     {
-        Diff = BufExit->lo - BufEntry->lo;
+        Diff = Exit->lo - Entry->lo;
     }
-    else if (BufExit->hi == BufEntry->hi-1)
+    else if (Exit->hi == Entry->hi - 1)
     {
-        Diff = (~BufEntry->lo)+1+BufExit->lo;
+        Diff = (~Entry->lo)+1+Exit->lo;
     }
     else
     {
+        /* Overflow. Why are you trying to profile something this big? :) */
         return UINT32_MAX;
     }
+
     return Diff;
 }
-
-static CycleBuffer CyclesEntry;
-static CycleBuffer CyclesExit;
 
 unsigned long __fastcall__ profile(void (*proc)(void))
 /* Profile a block of code: a pointer to a fastcall function with no parameters and no return value */
 {   
-    /* The two calls to getcycles() have a fixed overhead that will cancel out on subtraction*/
+    Long64 CyclesEntry;
+    Long64 CyclesExit;
+
+    /* The two calls to getcycles() have a overhead that should cancel out on subtraction*/
     /* The call to proc will have the overhead of an indirect call on a stack variable */
     getcycles (&CyclesEntry);
     proc ();
     getcycles (&CyclesExit);
 
-    return CycleBufferDiff(&CyclesExit, &CyclesEntry);
+    /* Calculate difference, or overflow */
+    return Long64Diff(&CyclesExit, &CyclesEntry);
 }
 
 /***** USER CODE *******/
 
-void FuncToProfile(void)
-/* Test function to profile. Nothing special */
+void AddSomething(void)
+/* To profile */
 {
     int a,b,c;
     a=2;
@@ -64,14 +64,27 @@ void FuncToProfile(void)
     c=a+b;
 }
 
+void SubSomething(void)
+/* To profile */
+{
+    int a,b,c;
+    a=2;
+    b=7;
+    c=a-b;
+}
+
+
 int main(void)
 /* Entry point */
 {
-    unsigned long Result;
+    unsigned long ResultAdd;
+    unsigned long ResultSub;
     printf ("Hello, profiler\n");
-    Result = profile(FuncToProfile);
-    printf ("Bye, profiler (%ld)\n", Result);
+    ResultAdd = profile (AddSomething);
+    ResultSub = profile (SubSomething);
+    printf ("Add:%ld. Sub:%ld\n", ResultAdd, ResultSub);
+    printf ("Bye, profiler\n");
     exit (EXIT_SUCCESS);
 }
 
-/* To build cl65 -t sim6502 profile.c && sim65 profile */
+/* To build and run cl65 -t sim6502 profile.c sim6502.lib && sim65 profile */
