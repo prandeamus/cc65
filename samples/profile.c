@@ -37,13 +37,20 @@ static unsigned long __fastcall__ Long64Diff (Long64 *Exit, Long64 *Entry)
     return Diff;
 }
 
+static void NullProc(void)
+/* For comparison, a function that does nothing */
+{
+    /* Body deliberately left blank */
+}
+
 unsigned long __fastcall__ profile(void (*proc)(void))
 /* Profile a block of code: a pointer to a fastcall function with no parameters and no return value */
 {   
     Long64 CyclesEntry;
     Long64 CyclesExit;
 
-    /* The two calls to getcycles() have a overhead that should cancel out on subtraction*/
+    /* The two calls to getcycles() have a nearly identical overhead so they nearly cancel each other out */
+    /* To be precise, calibrate by calling a null procedure and using that */
     /* The call to proc will have the overhead of an indirect call on a stack variable */
     getcycles (&CyclesEntry);
     proc ();
@@ -77,12 +84,14 @@ void SubSomething(void)
 int main(void)
 /* Entry point */
 {
+    unsigned long ResultNull;
     unsigned long ResultAdd;
     unsigned long ResultSub;
     printf ("Hello, profiler\n");
-    ResultAdd = profile (AddSomething);
-    ResultSub = profile (SubSomething);
-    printf ("Add:%ld. Sub:%ld\n", ResultAdd, ResultSub);
+    ResultNull = profile (NullProc);
+    ResultAdd = profile (AddSomething) - ResultNull;
+    ResultSub = profile (SubSomething) - ResultNull;
+    printf ("Null: %ld, Add:%ld, Sub:%ld\n", ResultNull, ResultAdd, ResultSub);
     printf ("Bye, profiler\n");
     exit (EXIT_SUCCESS);
 }
