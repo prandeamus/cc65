@@ -7,17 +7,20 @@
 typedef struct {
     uint32_t lo;
     uint32_t hi;
-} Long64;
+} ULong64;
+
+static ULong64 Cycles1;
+static ULong64 Cycles2;
 
 /* Paravirtualisation entry point to get get current cycle count */
-extern void __fastcall__ getcycles(Long64 * buf);
+extern void __fastcall__ getcycles(ULong64 * buf);
 /* End profile definitions */
 
 
 /* Support functions inside the simulated processor */
 
-static unsigned long __fastcall__ Long64Diff (Long64 *Exit, Long64 *Entry)
-/* Calculate difference between two Long64 values */
+static unsigned long __fastcall__ ULong64Diff (ULong64 *Exit, ULong64 *Entry)
+/* Calculate difference between two ULong64 values */
 {
     unsigned long Diff;
     if(Exit->hi == Entry->hi)
@@ -26,10 +29,10 @@ static unsigned long __fastcall__ Long64Diff (Long64 *Exit, Long64 *Entry)
     }
     else if (Exit->hi == Entry->hi - 1)
     {
-        Diff = (~Entry->lo)+1+Exit->lo;
+        Diff = (Exit->lo)-(Entry->lo)+1;
     }
     else
-    {
+    {   
         /* Overflow. Why are you trying to profile something this big? :) */
         return UINT32_MAX;
     }
@@ -43,21 +46,25 @@ static void NullProc(void)
     /* Body deliberately left blank */
 }
 
+/* Start and stop cycle types, store here to keep the calls to getcycles equal overhead */
+
 unsigned long __fastcall__ profile(void (*proc)(void))
 /* Profile a block of code: a pointer to a fastcall function with no parameters and no return value */
 {   
-    Long64 CyclesEntry;
-    Long64 CyclesExit;
+    /* Save proc parameter, in AX, to the jmpvec */
+    __asm__ ("sta jmpvec+1");
+    __asm__ ("stx jmpvec+2");
+    /* Satisfy compiler that proc has been used */
+    (void)proc;
 
-    /* The two calls to getcycles() have a nearly identical overhead so they nearly cancel each other out */
-    /* To be precise, calibrate by calling a null procedure and using that */
-    /* The call to proc will have the overhead of an indirect call on a stack variable */
-    getcycles (&CyclesEntry);
-    proc ();
-    getcycles (&CyclesExit);
+    /* The two calls to getcycles() have an identical overhead so they cancel each other out */
+    /* To be precise, calibrate by calling a null procedure and using that. */
+    getcycles (&Cycles1);
+    __asm__("jsr jmpvec");
+    getcycles (&Cycles2);
 
     /* Calculate difference, or overflow */
-    return Long64Diff(&CyclesExit, &CyclesEntry);
+    return ULong64Diff(&Cycles2, &Cycles1);
 }
 
 /***** USER CODE *******/
@@ -79,7 +86,6 @@ void SubSomething(void)
     b=7;
     c=a-b;
 }
-
 
 int main(void)
 /* Entry point */
