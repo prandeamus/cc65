@@ -281,16 +281,30 @@ static void PVWrite (CPURegs* Regs)
     SetAX (Regs, RetVal);
 }
 
-static void PVGetCycles (CPURegs* Regs) {
-    unsigned Buf = GetAX (Regs); /* Pointer to buffer for cycle count */
-    unsigned long CyclesCount = GetCycles ();
-    
-    MemWriteWord (Buf,   (CyclesCount      ) & 0xFFFF);
-    MemWriteWord (Buf+2, (CyclesCount >> 16) & 0xFFFF);
-    MemWriteWord (Buf+4, (CyclesCount >> 32) & 0xFFFF);
-    MemWriteWord (Buf+6, (CyclesCount >> 48) & 0xFFFF);
+/* For PVCycles, remember the previous result */
+static unsigned CyclesLast = 0;
 
-    Print (stderr, 2, "PVGetCycles Count ($%04lX)\n", CyclesCount);
+static void PVGetCycles (CPURegs* Regs) {
+    unsigned Cyc = GetAX (Regs); /* Pointer to result */
+    unsigned long Cycles = GetCycles ();
+    unsigned long CyclesDiff = Cycles - CyclesLast;
+
+    /* Limit to 32-bits. */
+    if (CyclesDiff > 0xFFFFFFFFL)
+    {
+        CyclesDiff = 0xFFFFFFFFL;
+    }
+
+    /* Save the difference if the save address is not null */
+    if (Cyc)
+    {
+        MemWriteWord (Cyc,   (CyclesDiff      ) & 0xFFFF);
+        MemWriteWord (Cyc+2, (CyclesDiff >> 16) & 0xFFFF);
+    }
+
+    CyclesLast = Cycles;
+
+    Print (stderr, 2, "PVGetCycles Count ($%04lX)\n", Cycles);
 }
 
 static const PVFunc Hooks[] = {

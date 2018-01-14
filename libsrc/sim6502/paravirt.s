@@ -5,7 +5,7 @@
 ; int __fastcall__ close (int fd);
 ; int __fastcall__ read (int fd, void* buf, unsigned count);
 ; int __fastcall__ write (int fd, const void* buf, unsigned count);
-; void __fastcall__ getcycles(signed char * buf);
+; void __fastcall__ getcycles(unsigned long * buf);
 ;
 
         .export         args, exit, _open, _close, _read, _write, _getcycles

@@ -2,43 +2,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-/* Profile definitions - this needs to move to a header file */
-/* There is no long long or 8-byte type in cc65, so use a structure */
-typedef struct {
-    uint32_t lo;
-    uint32_t hi;
-} ULong64;
-
-static ULong64 Cycles1;
-static ULong64 Cycles2;
-
+/* Profile definitions */
 /* Paravirtualisation entry point to get get current cycle count */
-extern void __fastcall__ getcycles(ULong64 * buf);
+extern void __fastcall__ getcycles(uint32_t *cycles);
 /* End profile definitions */
 
-
 /* Support functions inside the simulated processor */
-
-static unsigned long __fastcall__ ULong64Diff (ULong64 *Exit, ULong64 *Entry)
-/* Calculate difference between two ULong64 values */
-{
-    unsigned long Diff;
-    if(Exit->hi == Entry->hi)
-    {
-        Diff = Exit->lo - Entry->lo;
-    }
-    else if (Exit->hi == Entry->hi - 1)
-    {
-        Diff = (Exit->lo)-(Entry->lo)+1;
-    }
-    else
-    {   
-        /* Overflow. Why are you trying to profile something this big? :) */
-        return UINT32_MAX;
-    }
-
-    return Diff;
-}
 
 static void NullProc(void)
 /* For comparison, a function that does nothing */
@@ -51,6 +20,8 @@ static void NullProc(void)
 unsigned long __fastcall__ profile(void (*proc)(void))
 /* Profile a block of code: a pointer to a fastcall function with no parameters and no return value */
 {   
+    static uint32_t Cycles;
+
     /* Save proc parameter, in AX, to the jmpvec */
     __asm__ ("sta jmpvec+1");
     __asm__ ("stx jmpvec+2");
@@ -59,12 +30,11 @@ unsigned long __fastcall__ profile(void (*proc)(void))
 
     /* The two calls to getcycles() have an identical overhead so they cancel each other out */
     /* To be precise, calibrate by calling a null procedure and using that. */
-    getcycles (&Cycles1);
+    getcycles (&Cycles);
     __asm__("jsr jmpvec");
-    getcycles (&Cycles2);
+    getcycles (&Cycles);
 
-    /* Calculate difference, or overflow */
-    return ULong64Diff(&Cycles2, &Cycles1);
+    return Cycles;
 }
 
 /***** USER CODE *******/
@@ -93,12 +63,25 @@ int main(void)
     unsigned long ResultNull;
     unsigned long ResultAdd;
     unsigned long ResultSub;
+    unsigned long pre,post;
+    int baz=99;
     printf ("Hello, profiler\n");
+
     ResultNull = profile (NullProc);
-    ResultAdd = profile (AddSomething) - ResultNull;
-    ResultSub = profile (SubSomething) - ResultNull;
+    ResultAdd  = profile (AddSomething) - ResultNull;
+    ResultSub  = profile (SubSomething) - ResultNull;
+
+    /* Do it inline */
+    getcycles(NULL);
+    baz++;
+    getcycles(&post);
+    ++baz;
+    getcycles(&pre);
+
     printf ("Null: %ld, Add:%ld, Sub:%ld\n", ResultNull, ResultAdd, ResultSub);
+    printf ("pre,post %ld,%ld\n", pre, post);
     printf ("Bye, profiler\n");
+
     exit (EXIT_SUCCESS);
 }
 
