@@ -5,15 +5,18 @@
 /* Profile definitions */
 /* Paravirtualisation entry point to get get current cycle count */
 extern void __fastcall__ getcycles(uint32_t *cycles);
+/* Profile a parameterless call */
+extern unsigned long __fastcall__ prof(void (*proc)(void));
 /* End profile definitions */
 
 /* Support functions inside the simulated processor */
-
+#if 0
 static void NullProc(void)
 /* For comparison, a function that does nothing */
 {
     /* Body deliberately left blank */
 }
+#endif
 
 /* Start and stop cycle types, store here to keep the calls to getcycles equal overhead */
 
@@ -30,7 +33,7 @@ unsigned long __fastcall__ profile(void (*proc)(void))
 
     /* The two calls to getcycles() have an identical overhead so they cancel each other out */
     /* To be precise, calibrate by calling a null procedure and using that. */
-    getcycles (&Cycles);
+    getcycles (NULL);
     __asm__("jsr jmpvec");
     getcycles (&Cycles);
 
@@ -43,6 +46,9 @@ void AddSomething(void)
 /* To profile */
 {
     int a,b,c;
+
+    //fprintf (stderr, "Hello mum ++\n");
+
     a=2;
     b=7;
     c=a+b;
@@ -60,26 +66,24 @@ void SubSomething(void)
 int main(void)
 /* Entry point */
 {
-    unsigned long ResultNull;
     unsigned long ResultAdd;
     unsigned long ResultSub;
-    unsigned long pre,post;
+    unsigned long Pre, Post;
     int baz=99;
     printf ("Hello, profiler\n");
 
-    ResultNull = profile (NullProc);
-    ResultAdd  = profile (AddSomething) - ResultNull;
-    ResultSub  = profile (SubSomething) - ResultNull;
+    ResultAdd  = prof (AddSomething);
+    ResultSub  = prof (SubSomething);
 
     /* Do it inline */
     getcycles(NULL);
     baz++;
-    getcycles(&post);
+    getcycles(&Post);
     ++baz;
-    getcycles(&pre);
+    getcycles(&Pre);
 
-    printf ("Null: %ld, Add:%ld, Sub:%ld\n", ResultNull, ResultAdd, ResultSub);
-    printf ("pre,post %ld,%ld\n", pre, post);
+    printf ("Add:%08lX, Sub:%08lX\n", ResultAdd, ResultSub);
+    printf ("Pre,Post %ld,%ld\n", Pre, Post);
     printf ("Bye, profiler\n");
 
     exit (EXIT_SUCCESS);
