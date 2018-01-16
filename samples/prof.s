@@ -65,6 +65,7 @@ cycles: .dword 0
 ; Initialization
 .segment        "ONCE"
 
+; Calibrate the profiler with a null procedure
 .proc   initprof
 
         lda #<nullproc
@@ -72,9 +73,9 @@ cycles: .dword 0
         ldx #>nullproc
         stx jmpvec+2
 
-        ; getcycles(0)
-        lda #0
-        tax
+        ; getcycles(&cycles)
+        lda #<cycles
+        ldx #>cycles
         jsr _getcycles
         
         ; nullproc();
