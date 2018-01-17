@@ -1,6 +1,6 @@
-        .constructor    initprof, 7
+        .constructor    initprof
 
-        .export         _prof
+        .export         _profile
 
         .import         _getcycles
         .import         jmpvec
@@ -11,11 +11,11 @@
 cycnul: .dword 0
 cycles: .dword 0
 
-; unsigned long __fastcall__ prof(void (*proc)(void))
+; unsigned long __fastcall__ profile(void (*proc)(void))
 
 .code
 
-.proc   _prof
+.proc   _profile
 
         ; Save proc for later call
         sta jmpvec+1
