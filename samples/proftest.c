@@ -2,15 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-/* Profile definitions */
-/* Paravirtualisation entry point to get get current cycle count */
-extern void __fastcall__          getcycles(uint32_t *cycles);
-/* Profile a parameterless call */
-extern unsigned long __fastcall__ profile(void (*proc)(void));
-/* End profile definitions */
-
-
-/***** USER CODE *******/
+#include "profile.h"
 
 void AddSomething(void)
 /* Example to profile */
@@ -55,4 +47,9 @@ int main(void)
     exit (EXIT_SUCCESS);
 }
 
-/* To build and run cl65 -t sim6502 profile.c sim6502.lib && sim65 profile */
+/* To build and run 
+ca65 profile.s
+cl65 -c -O -t sim6502 proftest.c 
+cl65 -t sim6502 proftest.o profile.o sim6502.lib
+sim65 proftest
+*/
