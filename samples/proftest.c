@@ -28,28 +28,33 @@ int main(void)
 {
     unsigned long ResultAdd;
     unsigned long ResultSub;
-    unsigned long Pre, Post;
+    unsigned long PreLocal, PostLocal, PreStatic, PostStatic;
     int baz=99;
+    static int zab=100;
 
     ResultAdd  = profile (AddSomething);
     ResultSub  = profile (SubSomething);
 
     /* Do it inline */
-    getcycles(&Post);
+    getcycles(&PostLocal);
     baz++;
-    getcycles(&Post);
+    getcycles(&PostLocal);
     ++baz;
-    getcycles(&Pre);
+    getcycles(&PreLocal);
+    zab++;
+    getcycles(&PostStatic);
+    ++zab;
+    getcycles(&PreStatic);
 
     printf ("Add:%ld, Sub:%ld\n", ResultAdd, ResultSub);
-    printf ("Pre,Post %ld,%ld\n", Pre, Post);
+    printf ("Pre-increment (local),Post-increment (local) %ld,%ld\n", PreLocal, PostLocal);
+    printf ("Pre-increment (static),Post-increment (static) %ld,%ld\n", PreStatic, PostStatic);
 
     exit (EXIT_SUCCESS);
 }
 
 /* To build and run 
-ca65 profile.s
 cl65 -c -O -t sim6502 proftest.c 
-cl65 -t sim6502 proftest.o profile.o sim6502.lib
+cl65 -t sim6502 proftest.o sim6502.lib
 sim65 proftest
 */
